@@ -698,7 +698,12 @@ tvheadend.dvb_services = function(adapterData, satConfStore) {
 			forceFit : true
 		},
 		selModel : selModel,
-		tbar : [ saveBtn, rejectBtn, '-', mapBtn ]
+		tbar : [ saveBtn, rejectBtn, '-', mapBtn ],
+		// Add the pagination toolbar
+		bbar : new Ext.PagingToolbar({
+		  store         : store,
+		  displayInfo   : true
+		})
 	});
 	return grid;
 }
