@@ -26,6 +26,7 @@
 
 #include <arpa/inet.h>
 
+
 #include "htsmsg.h"
 #include "htsmsg_json.h"
 
@@ -329,10 +330,22 @@ extjs_dvbmuxes(http_connection_t *hc, const char *remain, void *opaque)
   htsmsg_t *out, *array, *in;
   const char *op        = http_arg_get(&hc->hc_req_args, "op");
   const char *entries   = http_arg_get(&hc->hc_req_args, "entries");
+  
+  // Retrieve the start & limit pagination parameters
+  const char *startchar = http_arg_get(&hc->hc_req_args, "start");
+  const char *limitchar = http_arg_get(&hc->hc_req_args, "limit");
+  
+  // Convert the pagination parameters to integers
+  int start = startchar ? atoi(startchar) : 0;
+  int limit = limitchar ? atoi(limitchar) : 20;
+  
+  // Counter variables
+  int counter = 0;
+
   th_dvb_mux_instance_t *tdmi;
-
+  
   pthread_mutex_lock(&global_lock);
-
+  
   if(remain == NULL ||
      (tda = dvb_adapter_find_by_identifier(remain)) == NULL) {
     pthread_mutex_unlock(&global_lock);
@@ -346,10 +359,26 @@ extjs_dvbmuxes(http_connection_t *hc, const char *remain, void *opaque)
   if(!strcmp(op, "get")) {
     array = htsmsg_create_list();
 
-    LIST_FOREACH(tdmi, &tda->tda_muxes, tdmi_adapter_link)
-      htsmsg_add_msg(array, NULL, dvb_mux_build_msg(tdmi));
+	// Go through all the muxes
+    LIST_FOREACH(tdmi, &tda->tda_muxes, tdmi_adapter_link) {
+	  
+	  // If this mux is on the correct page ...
+	  if (counter >= start && counter <= (limit + start)) {
+		// ... add that mux to the output array
+        htsmsg_add_msg(array, NULL, dvb_mux_build_msg(tdmi));
+	  }
+	  
+	  // Increase the counter so we know how many muxes we have
+	  counter++;
+    }
 
+	// Prepare all the muxes for output
     htsmsg_add_msg(out, "entries", array);
+	
+	// Prepare the total count for output,
+	// required for a working pagination
+	htsmsg_add_u32(out, "total",  counter);
+	
   } else if(!strcmp(op, "update")) {
     if(in != NULL)
       mux_update(in);

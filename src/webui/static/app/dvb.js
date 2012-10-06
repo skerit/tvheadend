@@ -377,7 +377,13 @@ tvheadend.dvb_muxes = function(adapterData, satConfStore) {
 			handler : function() {
 				tvheadend.addMuxManually(adapterData, satConfStore)
 			}
-		} ]
+		} ],
+		// Add the pagination toolbar
+		bbar : new Ext.PagingToolbar({
+		  store         : store,
+		  displayInfo   : true
+		})
+
 	});
 
 	return grid;
