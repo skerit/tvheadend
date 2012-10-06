@@ -440,6 +440,15 @@ extjs_dvbservices(http_connection_t *hc, const char *remain, void *opaque)
   th_dvb_mux_instance_t *tdmi;
   service_t *t, **tvec;
   int count = 0, i = 0;
+  
+  // Retrieve the start & limit pagination parameters
+  const char *startchar = http_arg_get(&hc->hc_req_args, "start");
+  const char *limitchar = http_arg_get(&hc->hc_req_args, "limit");
+  
+  // Convert the pagination parameters to integers
+  int start = startchar ? atoi(startchar) : 0;
+  int limit = limitchar ? atoi(limitchar) : 20;
+  int forstart = 0, forend = 0;
 
   pthread_mutex_lock(&global_lock);
 
@@ -471,11 +480,31 @@ extjs_dvbservices(http_connection_t *hc, const char *remain, void *opaque)
     }
 
     qsort(tvec, count, sizeof(service_t *), transportcmp);
+	
+	// Make sure our start parameter isn't too high
+	if (start > count) {
+	  forstart = count;
+	} else {
+	  forstart = start;
+	}
+	
+	// Make sure we stop on time
+	if ((forstart + limit) > count) {
+	  forend = count;
+	} else {
+	  forend = forstart + limit;
+	}
 
-    for(i = 0; i < count; i++)
+	// Only add the services numbered between forstart and forend
+    for(i = forstart; i < forend; i++)
       htsmsg_add_msg(array, NULL, dvb_service_build_msg(tvec[i]));
 
+	// Prepare the services for output
     htsmsg_add_msg(out, "entries", array);
+	
+	// Prepare the total count for output,
+	// required for a working pagination
+	htsmsg_add_u32(out, "total",  count);
 
   } else if(!strcmp(op, "update")) {
     if(in != NULL)
